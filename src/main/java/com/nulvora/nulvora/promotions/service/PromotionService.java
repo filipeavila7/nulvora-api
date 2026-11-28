@@ -2,6 +2,8 @@ package com.nulvora.nulvora.promotions.service;
 
 import com.nulvora.nulvora.common.utils.DateUtils;
 import com.nulvora.nulvora.coupon.entity.DiscountType;
+import com.nulvora.nulvora.product.entity.Product;
+import com.nulvora.nulvora.productVariant.entity.ProductVariant;
 import com.nulvora.nulvora.promotions.dto.request.PromotionRequest;
 import com.nulvora.nulvora.promotions.dto.request.PromotionUpdateRequest;
 import com.nulvora.nulvora.promotions.dto.response.PromotionDetailsResponse;
@@ -18,6 +20,8 @@ import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.math.BigDecimal;
+import java.math.BigInteger;
+import java.math.RoundingMode;
 import java.time.LocalDateTime;
 
 @Service
@@ -111,6 +115,37 @@ public class PromotionService {
 
         return promotion;
     }
+
+
+    // validar promoção com boleano
+    public boolean isValidPromotion(Long promotionId){
+        Promotion promotion = promotionRepository.findById(promotionId)
+                .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
+                        "Promoção não encontrada"));
+
+        LocalDateTime now = LocalDateTime.now();
+
+        if (now.isBefore(promotion.getStartAt())) {
+            return false;
+        }
+
+        if (!now.isBefore(promotion.getExpireAt())) {
+            return false;
+        }
+
+        if (!promotion.isActive()){
+            return false;
+        }
+
+        return true;
+    }
+
+    // calcular o disconto da promoção
+    public BigDecimal calculatePromotionDiscount(BigDecimal baseValue, BigDecimal discountValue){
+        return baseValue.multiply(discountValue).divide(new BigDecimal("100"), 2, RoundingMode.HALF_UP);
+
+    }
+
 
 
 

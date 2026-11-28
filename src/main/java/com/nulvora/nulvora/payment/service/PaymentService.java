@@ -8,6 +8,7 @@ import com.nulvora.nulvora.order.repository.OrderRepository;
 import com.nulvora.nulvora.payment.entity.Payment;
 import com.nulvora.nulvora.payment.entity.PaymentStatus;
 import com.nulvora.nulvora.payment.repository.PaymentRepository;
+import com.nulvora.nulvora.userCoupon.service.UserCouponService;
 import com.stripe.exception.EventDataObjectDeserializationException;
 import com.stripe.exception.StripeException;
 import com.stripe.model.Event;
@@ -28,6 +29,7 @@ public class PaymentService {
     private final PaymentRepository paymentRepository;
     private final StripePaymentService stripePaymentService;
     private final OrderRepository orderRepository;
+    private final UserCouponService userCouponService;
 
 
     // criar pagamento no banco
@@ -124,6 +126,14 @@ public class PaymentService {
         // Atualiza o Order relacionado
         Order order = payment.getOrder();
         order.setStatus(OrderStatus.PAID);
+
+        // Contabiliza a utilização do cupom, caso exista
+        if (order.getCoupon() != null) {
+            userCouponService.registerUsage(
+                    order.getUser().getId(),
+                    order.getCoupon().getId()
+            );
+        }
 
         paymentRepository.save(payment);
         orderRepository.save(order);

@@ -2,7 +2,7 @@ package com.nulvora.nulvora.orderItens.dto.response;
 
 import java.math.BigDecimal;
 
-public  record OrderItemResponse(
+public record OrderItemResponse(
         Long id,
         Long productVariantId,
         String productName,
@@ -10,6 +10,11 @@ public  record OrderItemResponse(
         String sku,
         String imageUrl,
         Integer quantity,
-        BigDecimal price,
-        BigDecimal subtotal
+
+        BigDecimal originalPrice,
+        BigDecimal finalPrice,
+
+        BigDecimal originalSubtotal,
+        BigDecimal subtotal,
+        BigDecimal totalDiscount
 ) {}

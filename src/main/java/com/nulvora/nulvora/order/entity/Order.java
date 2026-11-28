@@ -29,18 +29,22 @@ public class Order extends BaseEntity {
     private OrderStatus status;
 
     @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal discount = BigDecimal.ZERO;
+    private BigDecimal originalSubtotal;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal promotionDiscount;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal couponDiscount = BigDecimal.ZERO;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal subtotal;
+
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal shippingCost;
 
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal total;
-
-    // preço antes dos descontos
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal subTotal;
-
-    // preço do frete
-    @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal shippingCost;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "user_id")

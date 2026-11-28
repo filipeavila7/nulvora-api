@@ -1,3 +1,4 @@
+
 package com.nulvora.nulvora.order.service;
 
 import com.nulvora.nulvora.api.stripe.dto.response.StripeCheckoutResponse;
@@ -7,7 +8,6 @@ import com.nulvora.nulvora.coupon.service.CouponService;
 import com.nulvora.nulvora.helper.GlobalHelperService;
 import com.nulvora.nulvora.order.dto.request.OrderRequest;
 import com.nulvora.nulvora.order.dto.response.OrderCheckoutResponse;
-import com.nulvora.nulvora.order.dto.response.OrderResponse;
 import com.nulvora.nulvora.order.entity.Order;
 import com.nulvora.nulvora.order.entity.OrderStatus;
 import com.nulvora.nulvora.order.mapper.OrderMapper;
@@ -32,6 +32,7 @@ import java.math.RoundingMode;
 @Service
 @RequiredArgsConstructor
 public class OrderService {
+
     private final OrderRepository orderRepository;
     private final GlobalHelperService globalHelperService;
     private final OrderItemService orderItemService;
@@ -40,50 +41,73 @@ public class OrderService {
     private final UserCouponService userCouponService;
     private final PaymentService paymentService;
 
+    // TODO - fazer integração com API de cálculo de frete
 
-    // TODO - fazer integração com api de cálculo de frete
-    // TODO - criar logica de calculo de frete e dar um jeito de mostrar na response
-    // TODO - tratar duplicados no caso de mandar 2 variantes iguais para uma order (o banco ja trata mas é seguraça extra)
     @Transactional(rollbackFor = StripeException.class)
     public OrderCheckoutResponse createOrder(OrderRequest request) throws StripeException {
+
         User loggedUser = globalHelperService.getLoggedUser();
 
-        // cria o objeto de order
+        // Cria o pedido
         Order order = new Order();
         order.setUser(loggedUser);
         order.setStatus(OrderStatus.PENDING);
 
-        // valor padrão de frete por enquanto
+        // Valor padrão de frete por enquanto
         order.setShippingCost(BigDecimal.TEN);
 
-        // inicia o subtotal (preço base antes dos descontos)
+        // Inicializa os valores financeiros
+        BigDecimal originalSubtotal = BigDecimal.ZERO;
         BigDecimal subtotal = BigDecimal.ZERO;
+        BigDecimal promotionDiscount = BigDecimal.ZERO;
 
-        // percorre os intens e suas quatidades
-        for (var itens : request.items()){
-            OrderItem orderItem = orderItemService.createOrderItem(order, itens);
+        // Cria os itens e consolida seus valores
+        for (int i = 0; i < request.items().size(); i++) {
 
-            subtotal = subtotal.add(orderItem.getSubtotal());
+            OrderItem orderItem = orderItemService.createOrderItem(
+                    order,
+                    request.items().get(i)
+            );
+
+            originalSubtotal = originalSubtotal.add(
+                    orderItem.getOriginalSubtotal()
+            );
+
+            subtotal = subtotal.add(
+                    orderItem.getSubtotal()
+            );
+
+            promotionDiscount = promotionDiscount.add(
+                    orderItem.getTotalDiscount()
+            );
         }
 
-        // adciona o valor base sem descontos e adcionais
-        order.setSubTotal(subtotal);
+        // Registra os valores consolidados dos itens
+        order.setOriginalSubtotal(originalSubtotal);
+        order.setPromotionDiscount(promotionDiscount);
+        order.setSubtotal(subtotal);
 
-        // valor final
-        order.setTotal(subtotal.add(order.getShippingCost()));
+        // Inicializa o desconto do cupom
+        order.setCouponDiscount(BigDecimal.ZERO);
 
-        // caso tenha cupom aplicado
-        if (request.couponCode() != null && !request.couponCode().isBlank()){
-            System.out.println("entrou nessa merda ");
+        // Calcula o total inicial: subtotal + frete
+        order.setTotal(
+                subtotal.add(order.getShippingCost())
+        );
+
+        // Caso tenha cupom aplicado
+        if (request.couponCode() != null && !request.couponCode().isBlank()) {
+
             Coupon coupon = couponRepository.findByCode(request.couponCode())
-                    .orElseThrow(() -> new ResponseStatusException(HttpStatus.NOT_FOUND,
-                            "Cupom não encontrado"));
+                    .orElseThrow(() -> new ResponseStatusException(
+                            HttpStatus.NOT_FOUND,
+                            "Cupom não encontrado"
+                    ));
 
-            // valida se o cupom de desconto é aplicável e aplica
             applyCoupon(order, coupon);
         }
 
-        // salva o pedido
+        // Salva o pedido
         Order savedOrder = orderRepository.save(order);
 
         // Cria o registro de pagamento
@@ -93,24 +117,30 @@ public class OrderService {
         StripeCheckoutResponse checkout =
                 paymentService.initializePayment(payment);
 
-        return orderMapper.toOrderCheckoutResponse(savedOrder, checkout.checkoutUrl());
+        return orderMapper.toOrderCheckoutResponse(
+                savedOrder,
+                checkout.checkoutUrl()
+        );
     }
 
-    // validar se o cupom pode ser aplicado
-    private UserCoupon validateCouponAplication(Order order, Coupon coupon) {
-        // pega a relação e ja valida o cupom
+    // Valida se o cupom pode ser aplicado
+    private UserCoupon validateCouponApplication(Order order, Coupon coupon) {
+
+        // Recupera a relação do usuário com o cupom e valida sua utilização
         UserCoupon userCoupon = userCouponService.validateUseCoupon(coupon.getId());
 
-        // verifica se o valor mínimo da order não foi atingido
-        if (order.getSubTotal().compareTo(coupon.getMinOrderValue()) < 0) {
+        // Verifica se o valor mínimo do pedido foi atingido
+        if (order.getSubtotal().compareTo(coupon.getMinOrderValue()) < 0) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "O valor mínimo para utilizar esse cupom não foi atingido."
             );
         }
 
-        // verifica se o usuario execedeu o limite de ultilização do cupom
+        // Verifica se o usuário atingiu o limite de utilização
         if (userCoupon.getUsageCount() >= userCoupon.getUsageLimit()) {
+
             throw new ResponseStatusException(
                     HttpStatus.BAD_REQUEST,
                     "Limite de utilização do cupom atingido."
@@ -120,56 +150,54 @@ public class OrderService {
         return userCoupon;
     }
 
-    // aplicar desconto
+    // Aplica o desconto do cupom
     private void applyCoupon(Order order, Coupon coupon) {
-        // valida aplicação do cupom
-        UserCoupon userCoupon = validateCouponAplication(order, coupon);
 
-        // caso para cada tipo de cupom e calcula usando o metodo
+        // Valida aplicação do cupom
+        validateCouponApplication(order, coupon);
+
+        // Calcula o desconto de acordo com o tipo do cupom
         BigDecimal discount = switch (coupon.getCouponType()) {
-            case PRODUCT -> calculateDiscount(order.getSubTotal(), coupon)
-                    .min(order.getSubTotal());
 
-            case SHIPPING -> calculateDiscount(order.getShippingCost(), coupon)
-                    .min(order.getShippingCost());
+            case ORDER ->
+                    calculateDiscount(order.getSubtotal(), coupon)
+                            .min(order.getSubtotal());
 
-            case ORDER, FIRST_PURCHASE -> calculateDiscount(order.getTotal(), coupon)
-                    .min(order.getSubTotal());
+            case SHIPPING ->
+                    calculateDiscount(order.getShippingCost(), coupon)
+                            .min(order.getShippingCost());
         };
 
-        System.out.println("Tipo do cupom: " + coupon.getCouponType());
-        System.out.println("Tipo do desconto: " + coupon.getDiscountType());
-        System.out.println("Valor configurado: " + coupon.getDiscountValue());
-        System.out.println("Subtotal: " + order.getSubTotal());
-        System.out.println("Frete: " + order.getShippingCost());
-        System.out.println("Desconto calculado: " + discount);
+        // Registra o desconto do cupom
+        order.setCouponDiscount(discount);
 
-        // Aplicação do desconto
-        discount = discount.min(order.getTotal());
-        order.setTotal(order.getTotal().subtract(discount));
-
-        // gasta um uso do cupom
-        userCoupon.setUsageCount(userCoupon.getUsageCount() +1);
-
-        // seta o desconto na order
-        order.setDiscount(discount);
-
-        // seta o cupom na order
+        // Relaciona o cupom ao pedido
         order.setCoupon(coupon);
 
+        // Recalcula o total
+        order.setTotal(
+                order.getSubtotal()
+                        .add(order.getShippingCost())
+                        .subtract(discount)
+        );
 
-        System.out.println("Desconto salvo no objeto: " + order.getDiscount());
-        System.out.println("Total após desconto: " + order.getTotal());
     }
 
-    // calcular desconto dependendo do tipo do desconto
+    // Calcula o desconto de acordo com o tipo configurado
     private BigDecimal calculateDiscount(BigDecimal baseValue, Coupon coupon) {
+
         return switch (coupon.getDiscountType()) {
+
             case PERCENTAGE -> baseValue
                     .multiply(coupon.getDiscountValue())
-                    .divide(BigDecimal.valueOf(100), 2, RoundingMode.HALF_UP);
+                    .divide(
+                            BigDecimal.valueOf(100),
+                            2,
+                            RoundingMode.HALF_UP
+                    );
 
-            case FIXED_AMOUNT -> coupon.getDiscountValue().min(baseValue);
+            case FIXED_AMOUNT -> coupon.getDiscountValue()
+                    .min(baseValue);
         };
     }
 }

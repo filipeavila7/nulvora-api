@@ -13,7 +13,8 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 @RequiredArgsConstructor
-@RestController("/api/promotion-product")
+@RestController
+@RequestMapping(("/api/promotion-product"))
 public class PromotionProductController {
 
     private final PromotionProductService promotionProductService;

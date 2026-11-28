@@ -12,6 +12,7 @@ import com.nulvora.nulvora.userCoupon.repository.UserCouponRepository;
 import lombok.RequiredArgsConstructor;
 import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 import org.springframework.web.server.ResponseStatusException;
 
 import java.time.LocalDateTime;
@@ -25,7 +26,7 @@ public class UserCouponService {
     private final UserCouponMapper userCouponMapper;
 
 
-    // TODO - criar tests para testar exceções do metodo validateCoupon
+
     // usuario resgatar cupom
     public UserCouponResponse createUserCoupon(Long couponId){
         User loggedUser = globalHelperService.getLoggedUser();
@@ -112,6 +113,20 @@ public class UserCouponService {
         }
 
         return coupon;
+    }
+
+
+    @Transactional
+    public void registerUsage(Long userId, Long couponId) {
+
+        UserCoupon userCoupon = userCouponRepository
+                .findByUserIdAndCouponId(userId, couponId)
+                .orElseThrow(() -> new ResponseStatusException(
+                        HttpStatus.NOT_FOUND,
+                        "Relação entre usuário e cupom não encontrada"
+                ));
+
+        userCoupon.setUsageCount(userCoupon.getUsageCount() + 1);
     }
 
 

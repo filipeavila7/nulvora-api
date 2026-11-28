@@ -162,6 +162,10 @@ public class PromotionProductService {
         }
     }
 
+    public boolean hasPromotion(Product product){
+        return promotionProductRepository.existsByProductId(product.getId());
+    }
+
     // validar promoção atual
     private void validateCurrentPromotion(Promotion currentPromotion) {
 

@@ -59,7 +59,7 @@ public class SecurityConfig {
                         )
                 )
                 .authorizeHttpRequests(auth -> auth
-                        .requestMatchers("/auth/**").permitAll()
+                        .requestMatchers("/api/auth/**").permitAll()
                         .requestMatchers("/api/webhooks/stripe").permitAll()
                         .requestMatchers(
                                 "/swagger-ui/**",

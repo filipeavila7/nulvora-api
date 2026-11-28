@@ -1,8 +1,6 @@
 package com.nulvora.nulvora.promotions.entity;
 
 import com.nulvora.nulvora.common.entity.BaseEntity;
-import com.nulvora.nulvora.coupon.entity.DiscountType;
-import com.nulvora.nulvora.order.entity.Order;
 import com.nulvora.nulvora.promotionProduct.entity.PromotionProduct;
 import jakarta.persistence.*;
 import lombok.*;
@@ -30,7 +28,7 @@ public class Promotion extends BaseEntity {
 
     @Column(nullable = false)
     @Enumerated(EnumType.STRING)
-    private DiscountType discountType;
+    private PromotionDiscountType discountType;
 
     @Column(nullable = false, precision = 10, scale = 2)
     private BigDecimal discountValue;

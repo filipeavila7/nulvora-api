@@ -12,7 +12,7 @@ import java.math.BigDecimal;
 @Setter
 @NoArgsConstructor
 @AllArgsConstructor
-@Table(name = "order-item",
+@Table(name = "order_item",
         uniqueConstraints = {
                 @UniqueConstraint(
                         name = "uk_order_variant", // não permite a mesma variante duas vezes na order
@@ -28,9 +28,20 @@ public class OrderItem {
     private Integer quantity;
 
     @Column(nullable = false, precision = 12, scale = 2)
-    private BigDecimal price;
+    private BigDecimal originalprice;
 
-    // quantity x price
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal finalPrice;
+
+    // desconto total
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal totalDiscount;
+
+    // quantity x originalPrice
+    @Column(nullable = false, precision = 12, scale = 2)
+    private BigDecimal originalSubtotal;
+
+    // quantity x finalPrice
     @Column(nullable = false, precision = 12, scale = 2)
     private BigDecimal subtotal;
 

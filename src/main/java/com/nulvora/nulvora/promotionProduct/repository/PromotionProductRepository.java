@@ -23,4 +23,6 @@ public interface PromotionProductRepository extends JpaRepository<PromotionProdu
             Long categoryId,
             Long promotionId
     );
+
+    boolean existsByProductId(Long productId);
 }

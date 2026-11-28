@@ -16,12 +16,12 @@ import org.springframework.web.bind.annotation.*;
 
 @RestController
 @RequiredArgsConstructor
-@RequestMapping("/product-variant")
+@RequestMapping("/api/product-variant")
 public class ProductVariantController {
 
     private final ProductVariantService productVariantService;
 
-    @PostMapping("/{productId}/new/variants")
+    @PostMapping("/{productId}/variants")
     public ResponseEntity<ProductVariantResponse> createVariant(
             @PathVariable Long productId,
             @Valid @RequestBody ProductVariantRequest request
@@ -31,7 +31,7 @@ public class ProductVariantController {
     }
 
 
-    @PatchMapping("/{variantId}/update")
+    @PatchMapping("/{variantId}")
     public ResponseEntity<ProductVariantResponse> updateVariant(
             @PathVariable Long variantId,
             @Valid @RequestBody ProductVariantUpdateRequest request
@@ -39,7 +39,7 @@ public class ProductVariantController {
         return ResponseEntity.ok(productVariantService.updateVariant(variantId, request));
     }
 
-    @PatchMapping("/{variantId}/img/update")
+    @PatchMapping("/{variantId}/img")
     public ResponseEntity<ProductImgResponse> updateVariantImg(
             @PathVariable Long variantId,
             @Valid @RequestBody ProductImgUpdateRequest request

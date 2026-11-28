@@ -11,14 +11,18 @@ import java.util.List;
 public record OrderResponse(
         Long id,
         OrderStatus status,
-        BigDecimal discount,
-        BigDecimal total,
-        BigDecimal shippingCost, // preço do frete
+
+        BigDecimal originalSubtotal,
+        BigDecimal promotionDiscount,
+        BigDecimal couponDiscount,
+
         BigDecimal subTotal,
+        BigDecimal shippingCost,
+        BigDecimal total,
+
         LocalDateTime createdAt,
         List<OrderItemResponse> orderItems,
         CouponResponse coupon
-
 
 ) {
 }
